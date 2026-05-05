@@ -49,7 +49,7 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-## Usage
+# Usage
 with open(..., "rb") as f:
     num_processes = 4
     boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
