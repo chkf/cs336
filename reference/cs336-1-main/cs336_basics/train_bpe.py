@@ -280,7 +280,7 @@ def save_tokenizer_files(vocab, merges, out_dir):
             f.write(f"{s1} {s2}\n")
 
 def main():
-    input_path = "data/TinyStoriesV2-GPT4-train.txt" # 你的原始文本路径
+    input_path = "reference/cs336-1-main/tests/fixtures/tinystories_sample_5M.txt" # 你的原始文本路径
     vocab_size = 10000 # 作业要求的词表大小
     # input_path = "data/owt_train.txt" 
     # input_path = "data/chinese.txt" 
