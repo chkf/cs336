@@ -5,7 +5,8 @@ from loguru import logger
 import heapq
 from tqdm import tqdm
 from line_profiler import profile
-from pre_tokenizer import NativePreTokenizer
+from .pre_tokenizer import NativePreTokenizer
+from collections import defaultdict
 
 
 class ComparablePair:
@@ -95,19 +96,19 @@ class TokenizerTrainer(TokenizerTrainerBase):
                  pre_tokenizer_cls = NativePreTokenizer):
         super().__init__(corpus_path, vocab_size, special_tokens, split_special_token, pre_tokenizer_cls)
 
-        self.vocab: dict[int, bytes] = {}
+        self.vocab: dict[int, bytes] = defaultdict(bytes)
         self.merges: list[tuple[bytes, bytes]] = []
 
         self.current_vocab_size = 0
-        self.pre_token_count: dict[bytes, int] = {}
+        self.pre_token_count: dict[bytes, int] = defaultdict(int)
 
         self.words_list: list[bytes] = []
         self.words_count: list[int] = []
 
-        self.pair_counts: dict[tuple[bytes, bytes], int] = {}
+        self.pair_counts: dict[tuple[bytes, bytes], int] = defaultdict(int)
         self.pair_heap: list[tuple] = []
 
-        self.relevant_words: dict[tuple[bytes, bytes], set] = {}
+        self.relevant_words: dict[tuple[bytes, bytes], set] = defaultdict(set)
 
         for ascii_code in range(256):
             self._add_token(bytes([ascii_code]))
@@ -119,8 +120,8 @@ class TokenizerTrainer(TokenizerTrainerBase):
             special_tokens = self.special_tokens,
             split_special_token = self.split_special_token
         )
-        for word, count in self.pre_token_count.item():
-            self.words_list.append(list(tuple(bytes(b) for b in word.encode("utf-8"))))
+        for word, count in self.pre_token_count.items():
+            self.words_list.append(list(tuple(bytes([b]) for b in word)))
             self.words_count.append(count)
         
         for idx, word in enumerate(self.words_list):
@@ -147,8 +148,9 @@ class TokenizerTrainer(TokenizerTrainerBase):
             word = self.words_list[idx]
             count = self.words_count[idx]
 
-            for i in range(len(word) - 1):
-                if word[i] == pair[i] and word[i+1] == pair[i+1]:
+            i = 0
+            while i < len(word) - 1:
+                if word[i] == pair[0] and word[i+1] == pair[1]:
                     if i > 0:
                         prev_pair = (word[i-1], word[i])
                         self.pair_counts[prev_pair] -= count
@@ -159,7 +161,7 @@ class TokenizerTrainer(TokenizerTrainerBase):
                         self.pair_counts[next_pair] -= count
                         heapq.heappush(self.pair_heap, (-self.pair_counts[next_pair], ComparablePair(next_pair)))
 
-                    word[i] = pair
+                    word[i] = pair[0] + pair[1]
                     del word[i+1]
 
                     if i > 0:
@@ -173,12 +175,14 @@ class TokenizerTrainer(TokenizerTrainerBase):
                         self.relevant_words[new_next].add(idx)
                         self.pair_counts[new_next] += count
                         heapq.heappush(self.pair_heap, (-self.pair_counts[new_next], ComparablePair(new_next)))
+                else:
+                    i += 1
 
         del self.pair_counts[pair]
         del self.relevant_words[pair]
 
     def train(self) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
-        for _ in tqdm(range(self.current_vocab_size,self.target_vocab_size)):
+        for _ in tqdm(range(self.current_vocab_size,self.target_vocab_size), desc="training tokenizer"):
             while self.pair_heap:
                 neg_count, wrapper = heapq.heappop(self.pair_heap)
                 count = -neg_count

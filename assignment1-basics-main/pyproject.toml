@@ -19,6 +19,8 @@ dependencies = [
     "wandb>=0.25",
     "ty>=0.0.26",
     "ruff>=0.15.8",
+    "loguru",
+    "line_profiler",
 ]
 
 [build-system]

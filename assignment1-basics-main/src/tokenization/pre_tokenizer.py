@@ -4,7 +4,7 @@ from loguru import logger
 from abc import ABC, abstractmethod
 from line_profiler import profile
 from collections.abc import Iterator
-from collections import Counter
+from collections import Counter, defaultdict
 import regex as re
 from tqdm import tqdm
 
@@ -53,7 +53,7 @@ class FileChunkIterator:
         return max(0, len(self.boundaries) - 1)
         
     def __iter__(self) -> Iterator[bytes] | Iterator[str]:
-        with open(self.file_path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+        with open(self.corpus_path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
             for i in range(len(self.boundaries)-1):
                 start = self.boundaries[i]
                 end = self.boundaries[i+1]
@@ -79,7 +79,7 @@ class PreTokenizer(ABC):
     def _process_chunk(self, chunk: bytes, special_tokens: list[bytes]) -> dict[bytes, int]:
         pattern = re.compile(rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
-        pre_token_count = {}
+        pre_token_count = defaultdict(int)
 
         for mini_chunk in re.split(b"|".join([re.escape(token) for token in special_tokens]), chunk):
             pre_tokens = Counter(re.findall(pattern, mini_chunk))
@@ -99,13 +99,13 @@ class NativePreTokenizer(PreTokenizer):
 
         ) -> dict[bytes, int]:
 
-        total_pre_token_count = {}
+        total_pre_token_count = defaultdict(int)
         file_size = os.path.getsize(corpus_path)
 
         chunk_iter = FileChunkIterator(corpus_path, num_chunks, split_special_token, desired_bytes=4096)
 
         with open(corpus_path, "br") as f:
-            for chunk in tqdm(chunk_iter, desc="Processing chunks", total=file_size//num_chunks):
+            for chunk in tqdm(chunk_iter, desc="Processing chunks"):
                 chunk_pre_token_count = self._process_chunk(chunk, special_tokens)
                 for pre_token, count in chunk_pre_token_count.items():
                     total_pre_token_count[pre_token] += count
