@@ -23,9 +23,9 @@ class FileChunkIterator:
         self.desired_bytes = desired_bytes
 
         self.boundaries = []
-        self.find_chunk_boundaries()
+        self._find_chunk_boundaries()
 
-    def find_chunk_boundaries(self):
+    def _find_chunk_boundaries(self):
         file_size = os.path.getsize(self.corpus_path)
 
         if self.desired_bytes is not None:
@@ -76,7 +76,7 @@ class PreTokenizer(ABC):
         ) -> dict[bytes, int]:
         pass
 
-    def process_chunk(self, chunk: bytes, special_tokens: list[bytes]) -> dict[bytes, int]:
+    def _process_chunk(self, chunk: bytes, special_tokens: list[bytes]) -> dict[bytes, int]:
         pattern = re.compile(rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
         pre_token_count = {}
@@ -106,7 +106,7 @@ class NativePreTokenizer(PreTokenizer):
 
         with open(corpus_path, "br") as f:
             for chunk in tqdm(chunk_iter, desc="Processing chunks", total=file_size//num_chunks):
-                chunk_pre_token_count = self.process_chunk(chunk, special_tokens)
+                chunk_pre_token_count = self._process_chunk(chunk, special_tokens)
                 for pre_token, count in chunk_pre_token_count.items():
                     total_pre_token_count[pre_token] += count
         
