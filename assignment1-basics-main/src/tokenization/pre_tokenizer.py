@@ -65,7 +65,6 @@ class FileChunkIterator:
                     yield chunk.decode("utf-8")
 
 
-@profile
 class PreTokenizer(ABC):
     @abstractmethod
     def __call__(
@@ -88,6 +87,29 @@ class PreTokenizer(ABC):
         
         return pre_token_count
     
+    def pre_tokenize(self, input_bytes: bytes, special_tokens: list[bytes]) -> Iterator[bytes]:
+        special_tokens = sorted(special_tokens, key =lambda token: len(token), reverse=True)
+
+        pattern = re.compile(rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+
+        if special_tokens:
+            special_tokens_pattern = (b"|".join([re.escape(token) for token in special_tokens]))
+        else:
+            special_tokens_pattern = b""
+
+        special_tokens_pattern = b"(" + special_tokens_pattern + b")"
+
+        if special_tokens:
+            for mini_chunk in re.splititer(special_tokens_pattern, input_bytes):
+                if mini_chunk in special_tokens:
+                    yield mini_chunk
+                    continue
+                for pre_token in re.finditer(pattern, mini_chunk):
+                    yield pre_token.group()
+        else:
+            for pre_token in re.finditer(pattern, input_bytes):
+                yield pre_token.group()
+                    
 
 class NativePreTokenizer(PreTokenizer):
     def __call__(

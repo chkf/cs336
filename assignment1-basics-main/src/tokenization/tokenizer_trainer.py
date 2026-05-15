@@ -40,7 +40,7 @@ class TokenizerTrainerBase(ABC):
 
         self.corpus_path = corpus_path
         self.target_vocab_size = vocab_size
-        self.special_tokens = [token.encode() for token in special_tokens]
+        self.special_tokens = [token.encode("utf-8") for token in special_tokens]
         self.split_special_token = split_special_token
         self.pre_tokenizer = pre_tokenizer_cls()
 
@@ -86,7 +86,6 @@ class TokenizerTrainerBase(ABC):
         logger.info(f"tokenier saved to {out_dir}")
 
 
-@profile
 class TokenizerTrainer(TokenizerTrainerBase):
     def __init__(self, 
                  corpus_path, 
