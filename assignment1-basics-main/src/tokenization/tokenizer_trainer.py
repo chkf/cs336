@@ -86,6 +86,7 @@ class TokenizerTrainerBase(ABC):
         logger.info(f"tokenier saved to {out_dir}")
 
 
+@profile
 class TokenizerTrainer(TokenizerTrainerBase):
     def __init__(self, 
                  corpus_path, 

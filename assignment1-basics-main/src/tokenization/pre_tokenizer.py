@@ -111,6 +111,7 @@ class PreTokenizer(ABC):
                 yield pre_token.group()
                     
 
+@profile
 class NativePreTokenizer(PreTokenizer):
     def __call__(
         self, 

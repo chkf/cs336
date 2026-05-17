@@ -21,7 +21,8 @@ dependencies = [
     "ruff>=0.15.8",
     "loguru",
     "line_profiler",
-    "cachetools"
+    "cachetools",
+    "typer"
 ]
 
 [build-system]
