@@ -29,7 +29,11 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
 
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.basic import Linear
+    layer = Linear(d_in, d_out, device=weights.device, dtype=weights.dtype)
+    layer.weights = torch.nn.Parameter(weights)
+    return layer(in_features)
 
 
 def run_embedding(
@@ -50,8 +54,12 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
+    # raise NotImplementedError
+    from src.nn.basic import Embedding
+    layer = Embedding(vocab_size, d_model, device=weights.device, dtype=weights.dtype)
+    layer.embeds = torch.nn.Parameter(weights)
+    return layer(token_ids)
 
-    raise NotImplementedError
 
 
 def run_swiglu(
@@ -83,7 +91,16 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.network import SwiGLU
+
+    layer = SwiGLU(d_model, d_ff)
+    layer.linear1.weights.data = w1_weight
+    layer.linear2.weights.data = w2_weight
+    layer.linear3.weights.data = w3_weight
+
+    return layer(in_features)
+
 
 
 def run_scaled_dot_product_attention(
@@ -378,7 +395,11 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.basic import RMSNorm
+    layer = RMSNorm(d_model, eps, weights.device, weights.dtype)
+    layer.weights = torch.nn.Parameter(weights)
+    return layer(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
