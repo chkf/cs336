@@ -121,7 +121,10 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.functional import scaled_dot_production_attention
+
+    return scaled_dot_production_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -155,7 +158,17 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.network import MultiheadSelfAttention
+
+    layer = MultiheadSelfAttention(d_model, num_heads)
+
+    qkv_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0)
+    layer.qkv_proj.weights.data = qkv_weight
+    layer.out_proj.weights.data = o_proj_weight
+
+    return layer(in_features)
+
 
 
 def run_multihead_self_attention_with_rope(
@@ -195,7 +208,16 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.network import MultiheadSelfAttention
+
+    layer = MultiheadSelfAttention(d_model, num_heads, theta, max_seq_len)
+
+    qkv_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0)
+    layer.qkv_proj.weights.data = qkv_weight
+    layer.out_proj.weights.data = o_proj_weight
+    
+    return layer(in_features)
 
 
 def run_rope(
@@ -217,7 +239,12 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.basic import RotaryPositionalEmbedding
+
+    layer = RotaryPositionalEmbedding(theta, d_k, max_seq_len, device=in_query_or_key.device)
+
+    return layer(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -290,7 +317,20 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.network import TransformerBlock
+    layer = TransformerBlock(d_model, num_heads, d_ff, max_seq_len, theta)
+
+    layer.norm1.weights.data = weights["ln1.weight"]
+    layer.mha.qkv_proj.weights.data = torch.cat((weights["attn.q_proj.weight"], weights["attn.k_proj.weight"], weights["attn.v_proj.weight"]), dim=0)
+    layer.mha.out_proj.weights.data = weights["attn.output_proj.weight"]
+    layer.norm2.weights.data = weights["ln2.weight"]
+    layer.ffn.linear1.weights.data = weights["ffn.w1.weight"]
+    layer.ffn.linear2.weights.data = weights["ffn.w2.weight"]
+    layer.ffn.linear3.weights.data = weights["ffn.w3.weight"]
+
+    return layer(in_features)
+
 
 
 def run_transformer_lm(
@@ -372,7 +412,37 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.network import TransformerLM
+
+    layer = TransformerLM(
+        vocab_size,
+        context_length,
+        d_model,
+        num_layers,
+        num_heads,
+        d_ff,
+        rope_theta)
+    layer.embed.embeds.data = weights["token_embeddings.weight"]
+    layer.lm_head.weights.data = weights["lm_head.weight"]
+    for i in range(num_layers):
+        block = layer.layers[i]
+        block.mha.qkv_proj.weights.data = torch.cat(
+            [
+                weights[f"layers.{i}.attn.q_proj.weight"],
+                weights[f"layers.{i}.attn.k_proj.weight"],
+                weights[f"layers.{i}.attn.v_proj.weight"],
+            ],
+            dim=0,
+        )
+        block.mha.out_proj.weights.data = weights[f"layers.{i}.attn.output_proj.weight"]
+        block.norm1.weights.data = weights[f"layers.{i}.ln1.weight"]
+        block.norm2.weights.data = weights[f"layers.{i}.ln2.weight"]
+        block.ffn.linear1.weights.data = weights[f"layers.{i}.ffn.w1.weight"]
+        block.ffn.linear2.weights.data = weights[f"layers.{i}.ffn.w2.weight"]
+        block.ffn.linear3.weights.data = weights[f"layers.{i}.ffn.w3.weight"]
+    layer.post_norm.weights.data = weights["ln_final.weight"]
+    return layer(in_indices)
 
 
 def run_rmsnorm(
@@ -452,7 +522,10 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.functional import softmax
+
+    return softmax(in_features, dim)
 
 
 def run_cross_entropy(
@@ -470,7 +543,10 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.functional import cross_entropy_loss
+
+    return cross_entropy_loss(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
@@ -482,14 +558,20 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.functional import gradient_clipping
+
+    gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.optimizer import AdamW
+
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
@@ -517,7 +599,10 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from src.nn.functional import get_lr_cosine_schedule
+
+    return get_lr_cosine_schedule(it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters)
 
 
 def run_save_checkpoint(
