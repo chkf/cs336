@@ -17,10 +17,10 @@ class ComparablePair:
 
     def __lt__(self, other):
         return self.pair > other.pair
-    
+
     def __eq__(self, other):
         return self.pair == other.pair
-    
+
     def __repr__(self):
         return str(self.pair)
 
@@ -30,7 +30,7 @@ class TokenizerTrainerBase(ABC):
     merges: list[tuple[bytes, bytes]]
 
     def __init__(
-            self, 
+            self,
             corpus_path: str,
             vocab_size: int,
             special_tokens: list[str],
@@ -73,8 +73,8 @@ class TokenizerTrainerBase(ABC):
 
         byte_encoder = self._bytes_to_unicode()
 
-        vocab_to_save = {k:"".join(byte_encoder[b] for b in v) for k, v in self.vocab.items()}
-        
+        vocab_to_save = {k: "".join(byte_encoder[b] for b in v) for k, v in self.vocab.items()}
+
         with open(vocab_file, "w", encoding="utf-8") as f:
             json.dump(vocab_to_save, f, indent=4)
 
@@ -88,12 +88,12 @@ class TokenizerTrainerBase(ABC):
 
 @profile
 class TokenizerTrainer(TokenizerTrainerBase):
-    def __init__(self, 
-                 corpus_path, 
-                 vocab_size, 
-                 special_tokens, 
-                 split_special_token = b"<|endoftext|>",
-                 pre_tokenizer_cls = NativePreTokenizer):
+    def __init__(self,
+                 corpus_path,
+                 vocab_size,
+                 special_tokens,
+                 split_special_token=b"<|endoftext|>",
+                 pre_tokenizer_cls=NativePreTokenizer):
         super().__init__(corpus_path, vocab_size, special_tokens, split_special_token, pre_tokenizer_cls)
 
         self.vocab: dict[int, bytes] = defaultdict(bytes)
@@ -116,14 +116,14 @@ class TokenizerTrainer(TokenizerTrainerBase):
             self._add_token(token)
 
         self.pre_token_count = self.pre_tokenizer(
-            corpus_path = self.corpus_path,
-            special_tokens = self.special_tokens,
-            split_special_token = self.split_special_token
+            corpus_path=self.corpus_path,
+            special_tokens=self.special_tokens,
+            split_special_token=self.split_special_token
         )
         for word, count in self.pre_token_count.items():
             self.words_list.append(list(tuple(bytes([b]) for b in word)))
             self.words_count.append(count)
-        
+
         for idx, word in enumerate(self.words_list):
             for i in range(len(word) - 1):
                 pair = (word[i], word[i+1])
@@ -182,7 +182,7 @@ class TokenizerTrainer(TokenizerTrainerBase):
         del self.relevant_words[pair]
 
     def train(self) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
-        for _ in tqdm(range(self.current_vocab_size,self.target_vocab_size), desc="training tokenizer"):
+        for _ in tqdm(range(self.current_vocab_size, self.target_vocab_size), desc="training tokenizer"):
             while self.pair_heap:
                 neg_count, wrapper = heapq.heappop(self.pair_heap)
                 count = -neg_count
@@ -190,7 +190,7 @@ class TokenizerTrainer(TokenizerTrainerBase):
 
                 if count == self.pair_counts[pair]:
                     break
-            
+
             if pair is None:
                 raise ValueError("heap is empty")
 

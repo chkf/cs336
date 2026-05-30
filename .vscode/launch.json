@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Debug current test file",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [
@@ -12,39 +12,7 @@
             ],
             "justMyCode": false,
             "cwd": "${workspaceFolder}/assignment1-basics-main",
-            "python": "${workspaceFolder}/assignment1-basics-main/.venv/bin/python3",
-            "env": {
-                "PYDEVD_DISABLE_FILE_VALIDATION": "1"
-            }
-        },
-        {
-            "name": "Debug test_tokenizer.py (all tests)",
-            "type": "python",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_tokenizer.py",
-                "-s"
-            ],
-            "justMyCode": false,
-            "cwd": "${workspaceFolder}/assignment1-basics-main",
-            "python": "${workspaceFolder}/assignment1-basics-main/.venv/bin/python3",
-            "env": {
-                "PYDEVD_DISABLE_FILE_VALIDATION": "1"
-            }
-        },
-        {
-            "name": "Debug current test function (select name first)",
-            "type": "python",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "${file}::${selectedText}",
-                "-s"
-            ],
-            "justMyCode": false,
-            "cwd": "${workspaceFolder}/assignment1-basics-main",
-            "python": "${workspaceFolder}/assignment1-basics-main/.venv/bin/python3",
+            "python": "${workspaceFolder}/assignment1-basics-main/.venv/bin/python",
             "env": {
                 "PYDEVD_DISABLE_FILE_VALIDATION": "1"
             }

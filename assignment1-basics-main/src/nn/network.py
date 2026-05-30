@@ -4,8 +4,9 @@ from torch import Tensor
 from .basic import Linear, RotaryPositionalEmbedding, RMSNorm, Embedding
 from . import functional as F
 
+
 class SwiGLU(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  d_model: int,
                  d_ff: int
                  ) -> None:
@@ -26,21 +27,25 @@ class SwiGLU(nn.Module):
             self.d_ff,
         )
 
+    def _reset_params(self):
+        self.linear1._reset_params()
+        self.linear2._reset_params()
+        self.linear3._reset_params()
+
     def forward(self, x: Tensor) -> Tensor:
         gate = self.linear1(x)
         silu = gate * torch.sigmoid(gate)
         value = self.linear3(x)
 
         return self.linear2(silu * value)
-    
+
 
 class MultiheadSelfAttention(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  d_model: int,
                  num_heads: int,
                  theta: float | None = None,
-                 max_seq_len: int | None = None,
-                ) -> None:
+                 max_seq_len: int | None = None) -> None:
         super().__init__()
 
         self.d_model = d_model
@@ -59,6 +64,10 @@ class MultiheadSelfAttention(nn.Module):
         if theta is not None and max_seq_len is not None:
             self.rotery_embed = RotaryPositionalEmbedding(theta, self.head_dim, max_seq_len)
 
+    def _reset_params(self):
+        self.qkv_proj._reset_params()
+        self.out_proj._reset_params()
+
     def forward(self, x: Tensor) -> Tensor:
         qkv = self.qkv_proj(x)
         q, k, v = qkv.chunk(3, -1)
@@ -76,15 +85,15 @@ class MultiheadSelfAttention(nn.Module):
         attn_out = F.scaled_dot_production_attention(q, k, v, causal_mask).transpose(1, 2).flatten(-2, -1)
 
         return self.out_proj(attn_out)
-    
+
+
 class TransformerBlock(nn.Module):
     def __init__(self,
                  d_model: int,
                  num_heads: int,
                  d_ff: int,
                  max_seq_len: int,
-                 theta: float,
-                ) -> None:
+                 theta: float) -> None:
         super().__init__()
 
         self.norm1 = RMSNorm(d_model)
@@ -92,11 +101,17 @@ class TransformerBlock(nn.Module):
         self.norm2 = RMSNorm(d_model)
         self.ffn = SwiGLU(d_model, d_ff)
 
+    def _reset_params(self):
+        self.norm1._reset_params()
+        self.mha._reset_params()
+        self.norm2._reset_params()
+        self.ffn._reset_params()
+
     def forward(self, x: Tensor) -> Tensor:
         x = self.mha(self.norm1(x)) + x
         x = self.ffn(self.norm2(x)) + x
         return x
-    
+
 
 class TransformerLM(nn.Module):
     def __init__(self,
@@ -106,8 +121,7 @@ class TransformerLM(nn.Module):
                  num_layers: int,
                  num_heads: int,
                  d_ff: int,
-                 theta: float,
-                 ) -> None:
+                 theta: float) -> None:
         super().__init__()
 
         self.embed = Embedding(vocab_size, d_model)
@@ -119,6 +133,13 @@ class TransformerLM(nn.Module):
         self.post_norm = RMSNorm(d_model)
         self.lm_head = Linear(d_model, vocab_size)
 
+    def _reset_params(self):
+        self.embed._reset_params()
+        for layer in self.layers:
+            layer._reset_params()
+        self.post_norm._reset_params()
+        self.lm_head._reset_params()
+
     def forward(self, x: Tensor) -> Tensor:
         x = self.embed(x)
         for layer in self.layers:
@@ -126,4 +147,3 @@ class TransformerLM(nn.Module):
         x = self.post_norm(x)
         logits = self.lm_head(x)
         return logits
-        

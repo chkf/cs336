@@ -10,7 +10,7 @@ class Tokenizer:
                  vocab: dict[int, bytes],
                  merges: list[tuple[bytes, bytes]],
                  special_tokens: list[str] | None = None,
-                 pre_tokenizer_cls = NativePreTokenizer):
+                 pre_tokenizer_cls=NativePreTokenizer):
         self.vocab = vocab
         self.merges = merges
         if special_tokens:
@@ -26,11 +26,10 @@ class Tokenizer:
 
         self.cache = LRUCache(maxsize=1000)
 
-
     @classmethod
-    def from_files(cls, 
-                   vocab_filepath: str, 
-                   merges_filepath: str, 
+    def from_files(cls,
+                   vocab_filepath: str,
+                   merges_filepath: str,
                    special_tokens: list[str] | None = None):
         vocab = defaultdict(bytes)
         merges: list[tuple[bytes, bytes]] = []
@@ -53,23 +52,22 @@ class Tokenizer:
                 merges.append((parts[0], parts[1]))
         return cls(vocab, merges, special_tokens)
 
-        
     def encode(self, text: str) -> list[int]:
         byte_text = text.encode("utf-8")
         id_list = []
 
         for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
             id_list.extend(self._encode_one_pre_token(pre_token))
-        
+
         return id_list
-    
+
     def _encode_one_pre_token(self, pre_token: bytes) -> list[int]:
         if pre_token in self.cache:
             return self.cache[pre_token]
 
         if pre_token in self.vocab_to_id:
             return [self.vocab_to_id[pre_token]]
-        
+
         word = [bytes([b]) for b in pre_token]
 
         while len(word) > 1:
@@ -88,7 +86,7 @@ class Tokenizer:
             new_word = []
             i = 0
             while i < len(word):
-                if i < len(word) - 1 and word[i]==min_pair[0] and word[i+1]==min_pair[1]:
+                if i < len(word) - 1 and word[i] == min_pair[0] and word[i+1] == min_pair[1]:
                     new_word.append(min_pair[0]+min_pair[1])
                     i += 2
                 else:
@@ -97,15 +95,14 @@ class Tokenizer:
             word = new_word
 
         token_list = [self.vocab_to_id[token] for token in word]
-        
+
         self.cache[pre_token] = token_list
         return token_list
 
-    
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         for text in iterable:
             byte_text = text.encode("utf-8")
-            for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens): 
+            for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
                 yield from self._encode_one_pre_token(pre_token)
 
     def decode(self, ids: list[int]) -> str:

@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import Optional
 import torch
 import math
@@ -19,7 +19,7 @@ class SGD(torch.optim.Optimizer):
             for p in group["params"]:
                 if p.grad is None:
                     continue
-                
+
                 state = self.state[p]
                 t = state.get("t", 0)
                 grad = p.grad.data
@@ -27,16 +27,16 @@ class SGD(torch.optim.Optimizer):
                 state["t"] = t + 1
 
         return loss
-    
+
 
 class AdamW(torch.optim.Optimizer):
-    def __init__(self, 
-                 params, 
-                 lr: float, 
-                 weight_decay: float, 
+    def __init__(self,
+                 params,
+                 lr: float,
+                 weight_decay: float,
                  betas: tuple[float, float],
                  eps: float) -> None:
-        
+
         defaults = {
             "alpha": lr,
             "beta1": betas[0],
@@ -64,7 +64,7 @@ class AdamW(torch.optim.Optimizer):
             for p in group["params"]:
                 if p.grad is None:
                     continue
-                
+
                 state = self.state[p]
                 grad = p.grad
 
@@ -90,8 +90,8 @@ if __name__ == "__main__":
     weights = torch.nn.Parameter(5 * torch.randn((10, 10)))
     opt = SGD([weights], lr=1)
     for t in range(100):
-        opt.zero_grad()  # Reset the gradients for all learnable parameters.
-        loss = (weights**2).mean() # Compute a scalar loss value.
+        opt.zero_grad()
+        loss = (weights**2).mean()
         print(loss.cpu().item())
-        loss.backward() # Run backward pass, which computes gradients.
-        opt.step() # Run optimizer step.
+        loss.backward()
+        opt.step()
