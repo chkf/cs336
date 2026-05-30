@@ -1,13 +1,13 @@
 model:
   vocab_size: 10000
   # 上下文长度/序列最大长度 (Context length)
-  context_length: 256
+  max_seq_len: 256
   # Transformer 块层数 (Number of Transformer layers)
   num_layers: 4
   # 隐藏层维度/模型大小 (Hidden dimension)
-  hidden_dim: 512
+  d_model: 512
   # Transformer 内部前馈网络的维度 (Inner dimension of FFN, typically 4*hidden_dim)
-  inner_dim: 1344
+  d_ff: 1344
   # 多头注意力机制的头数 (Number of attention heads)
   num_heads: 16
   # RoPE (Rotary Position Embedding) 的旋转基数（通常为 10000）
@@ -19,7 +19,7 @@ model:
 
 optimizer:
   # 学习率 (Learning rate)
-  learning_rate: 3.0e-4
+  lr: 3.0e-4
   # 权重衰减 (Weight decay for AdamW)
   weight_decay: 1e-2
   # AdamW 优化器的一阶矩估计衰减率 (Beta1)
@@ -43,7 +43,7 @@ training:
   # 模型保存的间隔（迭代次数） (Checkpoint saving interval)
   checkpoint_interval: 1000
   # 模型和配置的输出目录 (Output directory)
-  output_dir: "./output_full/"
+  output_dir: "./output/"
   # 训练数据文件路径 (Path to training data .npy file)
   train_data: "save/data/TS-train.bin"
   # 验证数据文件路径 (Path to validation data .npy file)

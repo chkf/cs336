@@ -10,6 +10,7 @@ import yaml
 import shutil
 import loguru
 import time
+from easydict import EasyDict
 
 
 logger = loguru.logger
@@ -17,7 +18,7 @@ logger = loguru.logger
 
 def train(cfg_file: str):
     with open(cfg_file, 'r') as f:
-        cfg = yaml.safe_load(f, Loader=yaml.FullLoader)
+        cfg = EasyDict(yaml.safe_load(f))
 
     output_dir = Path(cfg.training.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -98,4 +99,4 @@ def train(cfg_file: str):
 
 
 if __name__ == '__main__':
-    train("assignment1-basics-main/basic.yaml")
+    train("basic.yaml")
