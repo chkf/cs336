@@ -1,6 +1,9 @@
 """
 Convert parquet dataset files to txt format.
 
+Dependency:
+    pip install pyarrow
+
 Usage:
     python convert_data.py --data_dir ../autodl-tmp/data/tiny/data/ --output_dir ./data/
 """
@@ -8,11 +11,15 @@ Usage:
 import os
 import glob
 import argparse
-import pandas as pd
+
+try:
+    import pyarrow.parquet as pq
+except ImportError:
+    raise ImportError("Please install pyarrow first: pip install pyarrow")
 
 
-def load_parquet_files(data_dir: str, pattern: str) -> pd.DataFrame:
-    """Load all parquet files matching the pattern."""
+def load_parquet_files(data_dir: str, pattern: str) -> list:
+    """Load all parquet files matching the pattern and return text list."""
     parquet_files = sorted(glob.glob(os.path.join(data_dir, pattern)))
     if not parquet_files:
         raise FileNotFoundError(f"No parquet files found matching pattern: {pattern}")
@@ -21,36 +28,37 @@ def load_parquet_files(data_dir: str, pattern: str) -> pd.DataFrame:
     for f in parquet_files:
         print(f"  - {os.path.basename(f)}")
     
-    dfs = []
+    all_texts = []
+    total_rows = 0
     for f in parquet_files:
         print(f"Loading {os.path.basename(f)}...")
-        df = pd.read_parquet(f)
-        dfs.append(df)
+        table = pq.read_table(f)
+        df = table.to_pandas()
+        
+        if total_rows == 0:
+            print(f"Columns: {list(df.columns)}")
+        
+        # Auto-detect text column
+        text_col = detect_text_column(df)
+        texts = df[text_col].tolist()
+        all_texts.extend(texts)
+        total_rows += len(df)
     
-    combined_df = pd.concat(dfs, ignore_index=True)
-    print(f"Combined shape: {combined_df.shape}")
-    return combined_df
+    print(f"Total loaded: {total_rows} rows")
+    return all_texts
 
 
-def extract_text_from_df(df: pd.DataFrame, text_column: str = None) -> list:
-    """Extract text from dataframe, auto-detecting text column if not specified."""
-    if text_column is not None:
-        if text_column not in df.columns:
-            raise ValueError(f"Column '{text_column}' not found. Available columns: {list(df.columns)}")
-        return df[text_column].tolist()
-    
-    # Auto-detect text column
+def detect_text_column(df) -> str:
+    """Auto-detect text column from dataframe."""
     text_candidates = ['text', 'content', 'passage', 'document', 'input', 'sentence']
     for col in text_candidates:
         if col in df.columns:
-            print(f"Auto-detected text column: '{col}'")
-            return df[col].tolist()
+            return col
     
     # If no text column found, use first string column
     for col in df.columns:
         if df[col].dtype == 'object':
-            print(f"Using first string column: '{col}'")
-            return df[col].tolist()
+            return col
     
     raise ValueError(f"No suitable text column found. Available columns: {list(df.columns)}")
 
@@ -92,16 +100,12 @@ def main():
     print("=" * 50)
     print("Loading training data...")
     print("=" * 50)
-    train_df = load_parquet_files(args.data_dir, args.train_pattern)
-    print(f"Columns: {list(train_df.columns)}")
-    train_texts = extract_text_from_df(train_df, args.text_column)
+    train_texts = load_parquet_files(args.data_dir, args.train_pattern)
     
     print("\n" + "=" * 50)
     print("Loading validation/test data...")
     print("=" * 50)
-    valid_df = load_parquet_files(args.data_dir, args.valid_pattern)
-    print(f"Columns: {list(valid_df.columns)}")
-    valid_texts = extract_text_from_df(valid_df, args.text_column)
+    valid_texts = load_parquet_files(args.data_dir, args.valid_pattern)
     
     print("\n" + "=" * 50)
     print("Saving to txt files...")
