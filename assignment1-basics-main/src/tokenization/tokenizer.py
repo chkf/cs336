@@ -1,8 +1,12 @@
 from collections.abc import Iterator, Iterable
-from .pre_tokenizer import NativePreTokenizer
+from .pre_tokenizer import NativePreTokenizer, FileChunkIterator
 from cachetools import LRUCache
 from collections import defaultdict
-import regex as re
+from multiprocessing import Pool
+import json
+import os
+import numpy as np
+import tqdm
 
 
 class Tokenizer:
@@ -34,17 +38,14 @@ class Tokenizer:
         vocab = defaultdict(bytes)
         merges: list[tuple[bytes, bytes]] = []
 
-        vocab_pattern = rb'"(.*)"'
         with open(vocab_filepath, "rb") as f:
-            for idx, match in re.finditer(vocab_pattern, f.read()):
-                token = match.group(1)
-                # TODO:TEST
-                vocab[idx] = token
+            vocab_str = json.load(f)
 
-        # merges_pattern = rb"^(.*) (.*)$"
+        for token_id, token_bytes in vocab_str.items():
+            vocab[token_id] = token_bytes
+
         with open(merges_filepath, "rb") as f:
             for line in f:
-                # TODO:match = re.match(merges_pattern)
                 line = line.rstrip()
                 if not line:
                     continue
@@ -104,6 +105,31 @@ class Tokenizer:
             byte_text = text.encode("utf-8")
             for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
                 yield from self._encode_one_pre_token(pre_token)
+
+    def encode_file(self,
+                    file_path: str,
+                    split_token: str = "<|endoftext|>",
+                    save_file: str | None = None) -> None:
+        file_iter = FileChunkIterator(file_path,
+                                      os.cpu_count()*100,
+                                      split_token,
+                                      1024*1024)
+        self.encode_batch(file_iter, save_file=save_file)
+
+    def encode_batch(self,
+                     texts: Iterable[str | bytes],
+                     save_file: str):
+        cpu_count = os.cpu_count()
+        num_workers = cpu_count - 1
+
+        # TODO: to learn
+        with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
+            for chunk_ids in tqdm(
+                    pool.imap(self.encode, texts, chunksize=1),
+                    desc="Encoding",
+                    total=len(list(texts))):
+                res = np.array(chunk_ids, dtype=np.uint16)
+                res.tofile(f_out)
 
     def decode(self, ids: list[int]) -> str:
         bytes_list = [self.vocab[id] for id in ids]
