@@ -45,20 +45,20 @@ class FileChunkIterator:
                     break
 
             self.boundaries.append(file_size)
-        
+
         self.boundaries = sorted(list(set(self.boundaries)))
-        logger.info(f"chunk boundary finding done")
-    
+        logger.info("chunk boundary finding done")
+
     def __len__(self) -> int:
         return max(0, len(self.boundaries) - 1)
-        
+
     def __iter__(self) -> Iterator[bytes] | Iterator[str]:
         with open(self.corpus_path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
             for i in range(len(self.boundaries)-1):
                 start = self.boundaries[i]
                 end = self.boundaries[i+1]
                 chunk = mm[start:end]
-                
+
                 if self.return_bytes:
                     yield chunk
                 else:
@@ -67,12 +67,10 @@ class FileChunkIterator:
 
 class PreTokenizer(ABC):
     @abstractmethod
-    def __call__(
-        self, 
-        corpus_path: str,
-        special_tokens: list[bytes],
-        split_special_token: bytes
-        ) -> dict[bytes, int]:
+    def __call__(self,
+                 corpus_path: str,
+                 special_tokens: list[bytes],
+                 split_special_token: bytes) -> dict[bytes, int]:
         pass
 
     def _process_chunk(self, chunk: bytes, special_tokens: list[bytes]) -> dict[bytes, int]:
@@ -84,11 +82,11 @@ class PreTokenizer(ABC):
             pre_tokens = Counter(re.findall(pattern, mini_chunk))
             for pre_token, count in pre_tokens.items():
                 pre_token_count[pre_token] += count
-        
+
         return pre_token_count
-    
+
     def pre_tokenize(self, input_bytes: bytes, special_tokens: list[bytes]) -> Iterator[bytes]:
-        special_tokens = sorted(special_tokens, key =lambda token: len(token), reverse=True)
+        special_tokens = sorted(special_tokens, key=lambda token: len(token), reverse=True)
 
         pattern = re.compile(rb"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
@@ -109,32 +107,24 @@ class PreTokenizer(ABC):
         else:
             for pre_token in re.finditer(pattern, input_bytes):
                 yield pre_token.group()
-                    
+
 
 @profile
 class NativePreTokenizer(PreTokenizer):
-    def __call__(
-        self, 
-        corpus_path: str,
-        special_tokens: list[bytes],
-        split_special_token: bytes,
-        num_chunks: int = 8,
-
-        ) -> dict[bytes, int]:
+    def __call__(self,
+                 corpus_path: str,
+                 special_tokens: list[bytes],
+                 split_special_token: bytes,
+                 num_chunks: int = 8) -> dict[bytes, int]:
 
         total_pre_token_count = defaultdict(int)
-        file_size = os.path.getsize(corpus_path)
 
         chunk_iter = FileChunkIterator(corpus_path, num_chunks, split_special_token, desired_bytes=4096)
 
-        with open(corpus_path, "br") as f:
-            for chunk in tqdm(chunk_iter, desc="Processing chunks"):
-                chunk_pre_token_count = self._process_chunk(chunk, special_tokens)
-                for pre_token, count in chunk_pre_token_count.items():
-                    total_pre_token_count[pre_token] += count
-        
-        logger.info(f"pre-tokenize done")
-        return total_pre_token_count
+        for chunk in tqdm(chunk_iter, desc="Processing chunks"):
+            chunk_pre_token_count = self._process_chunk(chunk, special_tokens)
+            for pre_token, count in chunk_pre_token_count.items():
+                total_pre_token_count[pre_token] += count
 
-            
-    
+        logger.info("pre-tokenize done")
+        return total_pre_token_count

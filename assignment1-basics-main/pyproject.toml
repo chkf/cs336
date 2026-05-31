@@ -22,7 +22,8 @@ dependencies = [
     "loguru",
     "line_profiler",
     "cachetools",
-    "typer"
+    "typer",
+    "easydict"
 ]
 
 [build-system]
