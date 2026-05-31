@@ -21,7 +21,7 @@ optimizer:
   # 学习率 (Learning rate)
   lr: 3.0e-4
   # 权重衰减 (Weight decay for AdamW)
-  weight_decay: 1e-2
+  weight_decay: 1.0e-2
   # AdamW 优化器的一阶矩估计衰减率 (Beta1)
   beta1: 0.9
   # AdamW 优化器的二阶矩估计衰减率 (Beta2)
@@ -35,17 +35,17 @@ training:
   # 总训练迭代次数 (Total training iterations)
   total_iterations: 20000
   # 学习率预热的迭代次数 (Warmup iterations)
-  warmup_iterations: 1000
+  warmup_iter: 1000
   # 学习率余弦退火周期迭代次数 (Cosine cycle iterations)
-  cosine_cycle_iterations: 20000
+  cosine_cycle_iter: 20000
   # 梯度裁剪的最大 L2 范数 (Max L2 norm for gradient clipping)
-  max_l2_norm: 1.0
+  max_norm: 1.0
   # 模型保存的间隔（迭代次数） (Checkpoint saving interval)
   checkpoint_interval: 1000
   # 模型和配置的输出目录 (Output directory)
   output_dir: "./output/"
   # 训练数据文件路径 (Path to training data .npy file)
-  train_data: "save/data/TS-train.bin"
+  train_data: "../../autodl-tmp/data/tiny/data/encoded.bin"
   # 验证数据文件路径 (Path to validation data .npy file)
   val_data: "save/data/owt_train.bin"
   # 保存检查点的步长（在 `train` 函数中用于判断是否保存检查点）

@@ -6,6 +6,7 @@ import heapq
 from tqdm import tqdm
 from line_profiler import profile
 from .pre_tokenizer import NativePreTokenizer
+from .utils import bytes_to_unicode
 from collections import defaultdict
 
 
@@ -48,30 +49,13 @@ class TokenizerTrainerBase(ABC):
     def train(self) -> tuple[dict, list[tuple[bytes, bytes]]]:
         pass
 
-    @staticmethod
-    def _bytes_to_unicode():
-        """
-        chr()
-        ord()
-        """
-        bs = list(range(ord("!"), ord("~")+1)) + list(range(ord("?"), ord("?") + 1)) + list(range(ord("?"), ord("?") + 1))
-        cs = bs[:]
-        n = 0
-        for b in range(256):
-            if b not in bs:
-                bs.append(b)
-                cs.append(256+n)
-                n += 1
-        cs = [chr(n) for n in cs]
-        return dict(zip(bs, cs))
-
     def save(self, out_dir: str) -> None:
         os.makedirs(out_dir, exist_ok=True)
 
         vocab_file = os.path.join(out_dir, "vocab.json")
         merges_file = os.path.join(out_dir, "merges.txt")
 
-        byte_encoder = self._bytes_to_unicode()
+        byte_encoder = bytes_to_unicode()
 
         vocab_to_save = {k: "".join(byte_encoder[b] for b in v) for k, v in self.vocab.items()}
 

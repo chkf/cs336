@@ -3,6 +3,8 @@ from .pre_tokenizer import NativePreTokenizer, FileChunkIterator
 from cachetools import LRUCache
 from collections import defaultdict
 from multiprocessing import Pool
+from .utils import bytes_to_unicode
+
 import json
 import os
 import numpy as np
@@ -22,7 +24,16 @@ class Tokenizer:
         else:
             self.special_tokens = []
 
-        self.vocab_to_id = {token: idx for idx, token in self.vocab.items()}
+        byte_encoder = bytes_to_unicode()
+        byte_encoder_reverse = {v: k for k, v in byte_encoder.items()}
+
+        self.vocab_to_id = {}
+
+        # self.vocab_to_id = {byte_encoder_reverse[ch for ch in token.decode("utf-8")]: idx for idx, token in self.vocab.items()}
+        for idx, token in self.vocab.items():
+            token_str = token.decode("utf-8")          # ×ª³É×Ö·û´®
+            token_bytes = bytes(byte_encoder_reverse[ch] for ch in token_str)
+            self.vocab_to_id[token_bytes] = idx
 
         self.ranks = {pair: i for i, pair in enumerate(self.merges)}
 
@@ -53,10 +64,9 @@ class Tokenizer:
                 merges.append((parts[0], parts[1]))
         return cls(vocab, merges, special_tokens)
 
-    def encode(self, text: str) -> list[int]:
-        byte_text = text.encode("utf-8")
+    def encode(self, text: str | bytes) -> list[int]:
+        byte_text = text.encode("utf-8") if isinstance(text, str) else text
         id_list = []
-
         for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
             id_list.extend(self._encode_one_pre_token(pre_token))
 
@@ -113,7 +123,7 @@ class Tokenizer:
         file_iter = FileChunkIterator(file_path,
                                       os.cpu_count()*100,
                                       split_token.encode("utf-8"),
-                                      return_bytes = False,
+                                      return_bytes = True,
                                       desired_bytes = 1024*1024)
         self.encode_batch(file_iter, save_file=save_file)
 
@@ -124,6 +134,9 @@ class Tokenizer:
     def encode_batch(self,
                      texts: Iterable[str | bytes],
                      save_file: str):
+        # for x in texts:
+        #     print(x)
+        #     input("xxxxxxxxx")
         cpu_count = os.cpu_count()
         num_workers = cpu_count - 1
 

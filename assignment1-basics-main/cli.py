@@ -110,24 +110,24 @@ def train(cfg_file: Annotated[str, typer.Argument(help="config file path")]):
         x_batch, y_batch = F.load_batch(train_dataset,
                                         cfg.training.batch_size,
                                         cfg.model.max_seq_len,
-                                        model.device)
+                                        cfg.model.device)
         logits = model(x_batch)
         loss = F.cross_entropy_loss(logits, y_batch)
         loss.backward()
         F.gradient_clipping(model.parameters(), cfg.training.max_norm)
         optimizer.step()
-        if iteration % cfg.training.log_step == 0:
+        if iter % cfg.training.log_step == 0:
             t2 = time.time()
             elapsed = t2 - t1
             batch_per_sec = cfg.training.batch_size / elapsed
-            tokens_per_sec = batch_per_sec * cfg.model.context_length
-            total_tokens += cfg.training.batch_size * cfg.model.context_length
+            tokens_per_sec = batch_per_sec * cfg.model.max_seq_len
+            total_tokens += cfg.training.batch_size * cfg.model.max_seq_len
             t1 = time.time()
-            logger.info(f"Iteration {iteration}: train loss = {loss.item():.4f}")
+            logger.info(f"Iteration {iter}: train loss = {loss.item():.4f}")
 
-        if iteration != 0 and iteration % cfg.training.save_step == 0:
-            save_path = output_dir / f"checkpoint_{iteration}.pt"
-            F.save_checkpoint(model, optimizer, iteration, save_path)
+        if iter != 0 and iter % cfg.training.save_step == 0:
+            save_path = output_dir / f"checkpoint_{iter}.pt"
+            F.save_checkpoint(model, optimizer, iter, save_path)
 
 
 @app.command()
