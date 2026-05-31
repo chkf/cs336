@@ -42,7 +42,7 @@ class Tokenizer:
             vocab_str = json.load(f)
 
         for token_id, token_bytes in vocab_str.items():
-            vocab[token_id] = token_bytes
+            vocab[token_id] = token_bytes.encode("utf-8")
 
         with open(merges_filepath, "rb") as f:
             for line in f:
@@ -112,9 +112,14 @@ class Tokenizer:
                     save_file: str | None = None) -> None:
         file_iter = FileChunkIterator(file_path,
                                       os.cpu_count()*100,
-                                      split_token,
-                                      1024*1024)
+                                      split_token.encode("utf-8"),
+                                      return_bytes = False,
+                                      desired_bytes = 1024*1024)
         self.encode_batch(file_iter, save_file=save_file)
+
+    # TODO: to learn
+    def _worker(self, text):
+        return self.encode(text)
 
     def encode_batch(self,
                      texts: Iterable[str | bytes],
@@ -123,13 +128,24 @@ class Tokenizer:
         num_workers = cpu_count - 1
 
         # TODO: to learn
+        # with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
+        #     for chunk_ids in tqdm.tqdm(
+        #             pool.imap(self.encode, texts, chunksize=1),
+        #             desc="Encoding",
+        #             total=len(list(texts))):
+        #         res = np.array(chunk_ids, dtype=np.uint16)
+        #         res.tofile(f_out)
+        texts = list(texts)
+
         with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
-            for chunk_ids in tqdm(
-                    pool.imap(self.encode, texts, chunksize=1),
-                    desc="Encoding",
-                    total=len(list(texts))):
-                res = np.array(chunk_ids, dtype=np.uint16)
-                res.tofile(f_out)
+            for chunk_ids in tqdm.tqdm(
+                pool.imap(self._worker, texts, chunksize=32),
+                desc="Encoding",
+                total=len(texts)
+            ):
+                if chunk_ids:
+                    res = np.array(chunk_ids, dtype=np.uint16)
+                    res.tofile(f_out)
 
     def decode(self, ids: list[int]) -> str:
         bytes_list = [self.vocab[id] for id in ids]

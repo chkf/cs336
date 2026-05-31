@@ -78,9 +78,9 @@ def save_to_txt(texts: list, output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Convert parquet dataset to txt format")
-    parser.add_argument("--data_dir", type=str, default="../autodl-tmp/data/tiny/data/",
+    parser.add_argument("--data_dir", type=str, default="../../autodl-tmp/data/tiny/data/",
                         help="Directory containing parquet files")
-    parser.add_argument("--output_dir", type=str, default="../autodl-tmp/data/tiny/data/",
+    parser.add_argument("--output_dir", type=str, default="../../autodl-tmp/data/tiny/data/",
                         help="Directory to save output txt files")
     parser.add_argument("--train_pattern", type=str, default="train-*.parquet",
                         help="Pattern for training parquet files")

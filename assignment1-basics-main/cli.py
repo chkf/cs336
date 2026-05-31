@@ -140,7 +140,7 @@ def encode_file(tokenizer_path: Annotated[str, typer.Argument(help="Path to the 
     vocab_path = tokenizer_path / "vocab.json"
     merges_path = tokenizer_path / "merges.txt"
 
-    tokenizer = Tokenizer(vocab_path,
+    tokenizer = Tokenizer.from_files(vocab_path,
                           merges_path,
                           [split_special_token])
 
