@@ -67,11 +67,11 @@ class Tokenizer:
         byte_text = text.encode("utf-8") if isinstance(text, str) else text
         id_list = []
         for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
-            id_list.extend(self._encode_one_pre_token(pre_token))
+            id_list.extend(self._encode_one_token(pre_token))
 
         return id_list
 
-    def _encode_one_pre_token(self, pre_token: bytes) -> list[int]:
+    def _encode_one_token(self, pre_token: bytes) -> list[int]:
         if pre_token in self.cache:
             return self.cache[pre_token]
 
@@ -113,7 +113,7 @@ class Tokenizer:
         for text in iterable:
             byte_text = text.encode("utf-8")
             for pre_token in self.pre_tokenizer.pre_tokenize(byte_text, self.special_tokens):
-                yield from self._encode_one_pre_token(pre_token)
+                yield from self._encode_one_token(pre_token)
 
     def encode_file(self,
                     file_path: str,

@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from line_profiler import profile
 from collections.abc import Iterator
 from collections import Counter, defaultdict
-from .utils import bytes_to_unicode
 import regex as re
 from tqdm import tqdm
 

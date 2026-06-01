@@ -14,10 +14,11 @@ import numpy as np
 import regex as re
 import yaml
 import shutil
-import time
+# import time
 from easydict import EasyDict
 
 app = typer.Typer(help="Tokenizer training and evaluation tools")
+
 
 @app.command()
 def train_tokenizer(
@@ -95,8 +96,8 @@ def train(cfg_file: Annotated[str, typer.Argument(help="config file path")]):
     train_dataset = np.memmap(cfg.training.train_data, dtype=np.uint16)
 
     logger.info(f"Starting training from iteration {current_iteration} to {cfg.training.total_iterations - 1}")
-    total_tokens = 0
-    t1 = time.time()
+    # total_tokens = 0
+    # t1 = time.time()
     for iter in range(current_iteration + 1, cfg.training.total_iterations + 1):
         optimizer.zero_grad()
         lr = F.get_lr_cosine_schedule(iter,
@@ -117,12 +118,12 @@ def train(cfg_file: Annotated[str, typer.Argument(help="config file path")]):
         F.gradient_clipping(model.parameters(), cfg.training.max_norm)
         optimizer.step()
         if iter % cfg.training.log_step == 0:
-            t2 = time.time()
-            elapsed = t2 - t1
-            batch_per_sec = cfg.training.batch_size / elapsed
-            tokens_per_sec = batch_per_sec * cfg.model.max_seq_len
-            total_tokens += cfg.training.batch_size * cfg.model.max_seq_len
-            t1 = time.time()
+            # t2 = time.time()
+            # elapsed = t2 - t1
+            # batch_per_sec = cfg.training.batch_size / elapsed
+            # tokens_per_sec = batch_per_sec * cfg.model.max_seq_len
+            # total_tokens += cfg.training.batch_size * cfg.model.max_seq_len
+            # t1 = time.time()
             logger.info(f"Iteration {iter}: train loss = {loss.item():.4f}")
 
         if iter != 0 and iter % cfg.training.save_step == 0:
@@ -141,8 +142,8 @@ def encode_file(tokenizer_path: Annotated[str, typer.Argument(help="Path to the 
     merges_path = tokenizer_path / "merges.txt"
 
     tokenizer = Tokenizer.from_files(vocab_path,
-                          merges_path,
-                          [split_special_token])
+                                     merges_path,
+                                     [split_special_token])
 
     tokenizer.encode_file(corpus_path,
                           split_special_token,
