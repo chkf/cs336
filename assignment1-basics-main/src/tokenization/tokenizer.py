@@ -4,7 +4,6 @@ from cachetools import LRUCache
 from collections import defaultdict
 from multiprocessing import Pool
 from .utils import bytes_to_unicode
-
 import json
 import os
 import numpy as np
@@ -126,10 +125,6 @@ class Tokenizer:
                                       desired_bytes=1024*1024)
         self.encode_batch(file_iter, save_file=save_file)
 
-    # TODO: to learn
-    def _worker(self, text):
-        return self.encode(text)
-
     def encode_batch(self,
                      texts: Iterable[str | bytes],
                      save_file: str):
@@ -138,7 +133,7 @@ class Tokenizer:
 
         with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
             for chunk_ids in tqdm.tqdm(
-                pool.imap(self._worker, texts, chunksize=32),
+                pool.imap(self.encode, texts, chunksize=32),
                 desc="Encoding",
                 total=len(texts)
             ):
