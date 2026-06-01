@@ -31,7 +31,7 @@ class Tokenizer:
 
         # self.vocab_to_id = {byte_encoder_reverse[ch for ch in token.decode("utf-8")]: idx for idx, token in self.vocab.items()}
         for idx, token in self.vocab.items():
-            token_str = token.decode("utf-8")          # ×ª³É×Ö·û´®
+            token_str = token.decode("utf-8")
             token_bytes = bytes(byte_encoder_reverse[ch] for ch in token_str)
             self.vocab_to_id[token_bytes] = idx
 
@@ -53,7 +53,9 @@ class Tokenizer:
             vocab_str = json.load(f)
 
         for token_id, token_bytes in vocab_str.items():
-            vocab[token_id] = token_bytes.encode("utf-8")
+            print(token_id, token_bytes,int(token_id))
+            input()
+            vocab[int(token_id)] = token_bytes.encode("utf-8")
 
         with open(merges_filepath, "rb") as f:
             for line in f:
