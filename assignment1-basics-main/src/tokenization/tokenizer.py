@@ -29,7 +29,6 @@ class Tokenizer:
 
         self.vocab_to_id = {}
 
-        # self.vocab_to_id = {byte_encoder_reverse[ch for ch in token.decode("utf-8")]: idx for idx, token in self.vocab.items()}
         for idx, token in self.vocab.items():
             token_str = token.decode("utf-8")
             token_bytes = bytes(byte_encoder_reverse[ch] for ch in token_str)
@@ -53,7 +52,7 @@ class Tokenizer:
             vocab_str = json.load(f)
 
         for token_id, token_bytes in vocab_str.items():
-            vocab[] = token_bytes.encode("utf-8")
+            vocab[token_id] = token_bytes.encode("utf-8")
 
         with open(merges_filepath, "rb") as f:
             for line in f:
@@ -123,8 +122,8 @@ class Tokenizer:
         file_iter = FileChunkIterator(file_path,
                                       os.cpu_count()*100,
                                       split_token.encode("utf-8"),
-                                      return_bytes = True,
-                                      desired_bytes = 1024*1024)
+                                      return_bytes=True,
+                                      desired_bytes=1024*1024)
         self.encode_batch(file_iter, save_file=save_file)
 
     # TODO: to learn
@@ -148,7 +147,7 @@ class Tokenizer:
         #             total=len(list(texts))):
         #         res = np.array(chunk_ids, dtype=np.uint16)
         #         res.tofile(f_out)
-        texts = list(texts)
+        # texts = list(texts)
 
         with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
             for chunk_ids in tqdm.tqdm(

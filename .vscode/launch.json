@@ -8,7 +8,7 @@
             "module": "pytest",
             "args": [
                 "${file}",
-                "-s"
+                "-s",
             ],
             "justMyCode": false,
             "cwd": "${workspaceFolder}/assignment1-basics-main",
