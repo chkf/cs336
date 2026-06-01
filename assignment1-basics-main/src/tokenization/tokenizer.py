@@ -53,9 +53,7 @@ class Tokenizer:
             vocab_str = json.load(f)
 
         for token_id, token_bytes in vocab_str.items():
-            print(token_id, token_bytes,int(token_id))
-            input()
-            vocab[int(token_id)] = token_bytes.encode("utf-8")
+            vocab[] = token_bytes.encode("utf-8")
 
         with open(merges_filepath, "rb") as f:
             for line in f:
