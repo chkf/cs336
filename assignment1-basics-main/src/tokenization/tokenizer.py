@@ -133,21 +133,8 @@ class Tokenizer:
     def encode_batch(self,
                      texts: Iterable[str | bytes],
                      save_file: str):
-        # for x in texts:
-        #     print(x)
-        #     input("xxxxxxxxx")
         cpu_count = os.cpu_count()
         num_workers = cpu_count - 1
-
-        # TODO: to learn
-        # with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
-        #     for chunk_ids in tqdm.tqdm(
-        #             pool.imap(self.encode, texts, chunksize=1),
-        #             desc="Encoding",
-        #             total=len(list(texts))):
-        #         res = np.array(chunk_ids, dtype=np.uint16)
-        #         res.tofile(f_out)
-        # texts = list(texts)
 
         with open(save_file, "wb") as f_out, Pool(processes=num_workers) as pool:
             for chunk_ids in tqdm.tqdm(
