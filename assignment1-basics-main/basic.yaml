@@ -45,7 +45,7 @@ training:
   # 模型和配置的输出目录 (Output directory)
   output_dir: "./output/"
   # 训练数据文件路径 (Path to training data .npy file)
-  train_data: "../../autodl-tmp/data/tiny/data/encoded.bin"
+  train_data: "../../autodl-tmp/data/tiny/data/encoded_train.bin"
   # 验证数据文件路径 (Path to validation data .npy file)
   val_data: "save/data/owt_train.bin"
   # 保存检查点的步长（在 `train` 函数中用于判断是否保存检查点）
