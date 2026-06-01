@@ -23,15 +23,7 @@ class Tokenizer:
         else:
             self.special_tokens = []
 
-        byte_encoder = bytes_to_unicode()
-        byte_encoder_reverse = {v: k for k, v in byte_encoder.items()}
-
-        self.vocab_to_id = {}
-
-        for idx, token in self.vocab.items():
-            token_str = token.decode("utf-8")
-            token_bytes = bytes(byte_encoder_reverse[ch] for ch in token_str)
-            self.vocab_to_id[token_bytes] = idx
+        self.vocab_to_id = {token: id for id, token in self.vocab.items()}
 
         self.ranks = {pair: i for i, pair in enumerate(self.merges)}
 
@@ -50,8 +42,11 @@ class Tokenizer:
         with open(vocab_filepath, "rb") as f:
             vocab_str = json.load(f)
 
-        for token_id, token_bytes in vocab_str.items():
-            vocab[token_id] = token_bytes.encode("utf-8")
+        byte_encoder = bytes_to_unicode()
+        byte_encoder_reverse = {v: k for k, v in byte_encoder.items()}
+
+        for token_id, token in vocab_str.items():
+            vocab[int(token_id)] = bytes(byte_encoder_reverse[ch] for ch in token)
 
         with open(merges_filepath, "rb") as f:
             for line in f:

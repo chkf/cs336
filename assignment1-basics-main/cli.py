@@ -154,7 +154,7 @@ def encode_file(tokenizer_path: Annotated[str, typer.Argument(help="Path to the 
 def decode(prompt: str,
            model_path: str,
            tokenizer_path: str,
-           checkpoint_number: int | None = None,
+           checkpoint_number: int | None = 20000,
            max_length: int = 50,
            temperature: float = 1.0,
            p: float = 0.9) -> str:
@@ -209,7 +209,7 @@ def decode(prompt: str,
         next_token = tokenizer.decode([next_token_id])
         if next_token == "<|endoftext|>":
             break
-    return tokenizer.decode(input_token)
+    print(tokenizer.decode(input_token))
 
 
 
