@@ -150,5 +150,70 @@ def encode_file(tokenizer_path: Annotated[str, typer.Argument(help="Path to the 
                           output_path)
 
 
+@app.command()
+def decode(prompt: str,
+           model_path: str,
+           tokenizer_path: str,
+           checkpoint_number: int | None = None,
+           max_length: int = 50,
+           temperature: float = 1.0,
+           p: float = 0.9) -> str:
+    save_path = Path(model_path)
+    checkpoint_path = save_path / f"checkpoint_{checkpoint_number}.pt"
+    config_path = save_path / "basic.yaml"
+    tokenizer_path = Path(tokenizer_path)
+    vocab_path = tokenizer_path / "vocab.json"
+    merges_path = tokenizer_path / "merges.txt"
+
+    tokenizer = Tokenizer.from_files(vocab_path,
+                                     merges_path)
+    with open(config_path, 'r') as f:
+        cfg = EasyDict(yaml.safe_load(f))
+    model = TransformerLM(cfg.model.vocab_size,
+                          cfg.model.max_seq_len,
+                          cfg.model.d_model,
+                          cfg.model.num_layers,
+                          cfg.model.num_heads,
+                          cfg.model.d_ff,
+                          cfg.model.theta)
+    
+    F.load_checkpoint(checkpoint_path, model)
+    model.eval()
+    device = torch.device(cfg.model.device)
+    model.to(device)
+
+    input_token = tokenizer.encode(prompt)
+    input_tensor = torch.tensor([input_token], device=device)
+
+    while len(input_token) < max_length:
+        logits = model(input_tensor)
+        logits = logits[:, -1, :].flatten()
+        logits = F.softmax(logits / temperature)
+
+        logits, index = logits.sort(dim=-1, descending=True)
+
+        count = 0
+        sum_p = 0.0
+        while sum_p < p and count < logits.size(0):
+            sum_p += logits[count].item()
+            count += 1
+
+        filtered_logits = logits[:count]
+        filtered_logits = filtered_logits / filtered_logits.sum()
+
+        next_token_id = index[torch.multinomial(filtered_logits, num_samples=1).item()].item()
+
+        input_token.append(next_token_id)
+        input_tensor = torch.tensor([input_token], device=device)
+
+        next_token = tokenizer.decode([next_token_id])
+        if next_token == "<|endoftext|>":
+            break
+    return tokenizer.decode(input_token)
+
+
+
+
+
 if __name__ == "__main__":
     app()
