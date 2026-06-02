@@ -87,6 +87,78 @@ class MultiheadSelfAttention(nn.Module):
         return self.out_proj(attn_out)
 
 
+# TODO: to finish
+class Moe(nn.Module):
+    def __init__(self,
+                 d_model: int,
+                 d_ff: int,
+                 num_experts: int,
+                 top_k: int = 1,
+                 router_jitter: float = 0.0,
+                 z_loss_coef: float = 1e-3,
+                 lb_loss_coef: float = 1e-1) -> None:
+        super().__init__()
+
+        self.router = Linear(d_model, num_experts)
+        self.experts = nn.ModuleList()
+        for i in range(num_experts):
+            self.experts.append(SwiGLU(d_model, d_ff))
+        self.num_experts = num_experts
+        self.top_k = top_k
+        self.router_jitter = router_jitter
+        self.z_loss_coef = z_loss_coef
+        self.lb_loss_coef = lb_loss_coef
+
+    @staticmethod
+    def _z_loss(x: Tensor) -> Tensor:
+        log_sum_exp = torch.logsumexp(x, dim=-1)
+        z_loss = torch.mean(log_sum_exp**2)
+        return z_loss
+
+    @staticmethod
+    def _load_balance_loss(router_probs: Tensor,
+                           topk_idx: Tensor,
+                           num_experts: int) -> Tensor:
+        p = router_probs.mean(dim=(0, 1))
+
+        dispatch = nn.functional.one_hot(topk_idx, num_experts).to(router_probs.dtype)
+        f = dispatch.mean(dim=(0, 1, 2))
+
+        return num_experts * torch.sum(p * f)
+
+    def forward(self, x: Tensor) -> dict[str, Tensor]:
+        logits = self.router(x)
+        if self.router_jitter > 0.0 and self.training:
+            noise = torch.randn_like(logits) * self.router_jitter
+            logits = logits + noise
+
+        router_probs = torch.softmax(logits, dim=-1)
+
+        topk_logits, topk_idx = torch.topk(logits, self.top_k)
+        topk_gates = F.softmax(topk_logits)
+
+        z_loss = self._z_loss(logits)
+        lb_loss = self._load_balance_loss(router_probs, topk_idx, self.num_experts)
+
+        x_flat = x.flatten(0, 1)
+        topk_gates_flat = topk_gates.flatten(0, 1)
+        out = torch.zeros_like(x_flat)
+
+        for i, expert in enumerate(self.experts):
+            mask = (topk_idx == i).any(dim=-1)
+
+            mask_flat = mask.flatten(0, 1)
+            input = x_flat[mask_flat]
+
+            expert_out = expert(input)
+
+            gated_expert_out = expert_out * topk_gates_flat[mask_flat, i]
+
+            out[mask_flat] += gated_expert_out
+
+        return out.reshape(x.shape), z_loss, lb_loss
+
+
 class TransformerBlock(nn.Module):
     def __init__(self,
                  d_model: int,
