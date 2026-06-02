@@ -88,7 +88,7 @@ class MultiheadSelfAttention(nn.Module):
 
 
 # TODO: to finish
-class Moe(nn.Module):
+class MoE(nn.Module):
     def __init__(self,
                  d_model: int,
                  d_ff: int,
