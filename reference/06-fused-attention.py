@@ -728,12 +728,12 @@ def _attn_bwd_preprocess(
 ):
     """
     反向传播的预处理步骤：计算 delta = sum(O * DO)
-    
+
     这个 kernel 的作用：
     Delta 是 Flash Attention 反向传播中的一个关键中间变量。
     根据数学推导，dS = P * (dP - D)，其中 D = rowsum(O * dO)，
     这里的 D 就是 delta（逐行的 output * grad_output 之和）。
-    
+
     为什么要预处理？
     因为这个计算是逐行的（每个 token 独立），可以先并行算好，
     避免在后续的反向 kernel 中重复计算。
@@ -742,7 +742,7 @@ def _attn_bwd_preprocess(
     off_m = tl.program_id(0) * BLOCK_M + tl.arange(0, BLOCK_M)  # [BLOCK_M]
     off_hz = tl.program_id(1)                                    # batch*head 索引
     off_n = tl.arange(0, HEAD_DIM)                               # [HEAD_DIM]
-    
+
     # ---- 加载 O 和 DO ----
     # O 的布局：[Z, H, N_CTX, HEAD_DIM]，展平为 [Z*H, N_CTX, HEAD_DIM]
     # off_hz * HEAD_DIM * N_CTX: 跳到对应的 batch*head
@@ -751,12 +751,12 @@ def _attn_bwd_preprocess(
     # 最终加载形状：[BLOCK_M, HEAD_DIM]
     o = tl.load(O + off_hz * HEAD_DIM * N_CTX + off_m[:, None] * HEAD_DIM + off_n[None, :])
     do = tl.load(DO + off_hz * HEAD_DIM * N_CTX + off_m[:, None] * HEAD_DIM + off_n[None, :]).to(tl.float32)
-    
+
     # ---- 计算 delta = sum(O * DO, axis=1) ----
     # 逐元素乘（Hadamard product），然后沿 head_dim 求和
     # 结果形状：[BLOCK_M]（每个 token 一个标量 delta 值）
     delta = tl.sum(o * do, axis=1)
-    
+
     # ---- 写回 Delta ----
     # Delta 的形状：[Z*H, N_CTX]
     tl.store(Delta + off_hz * N_CTX + off_m, delta)
@@ -1319,12 +1319,12 @@ class _attention(torch.autograd.Function):
         BLOCK_M1, BLOCK_N1, BLOCK_M2, BLOCK_N2 = 32, 128, 128, 32
         BLK_SLICE_FACTOR = 2  # causal mask 时的分块切片因子
         RCP_LN2 = 1.4426950408889634  # 1/ln(2)，用于 K 的预缩放
-        
+
         # ---- 预缩放 K ----
         # K 乘以 sm_scale * (1/ln2)，这是为了在反向传播中复用前向的数值技巧
         arg_k = k
         arg_k = arg_k * (ctx.sm_scale * RCP_LN2)
-        
+
         # ---- 步骤 1: 预处理，计算 delta = sum(O * dO) ----
         assert N_CTX % PRE_BLOCK == 0
         pre_grid = (N_CTX // PRE_BLOCK, BATCH * N_HEAD)
@@ -1335,7 +1335,7 @@ class _attention(torch.autograd.Function):
             BATCH, N_HEAD, N_CTX,
             BLOCK_M=PRE_BLOCK, HEAD_DIM=ctx.HEAD_DIM
         )
-        
+
         # ---- 步骤 2: 主反向传播 ----
         # 同时计算 dK、dV 和 dQ
         grid = (N_CTX // BLOCK_N1, 1, BATCH * N_HEAD)
@@ -1352,7 +1352,7 @@ class _attention(torch.autograd.Function):
             num_stages=NUM_STAGES,
             CAUSAL=ctx.causal,
         )
-        
+
         # 返回梯度：
         # q, k, v, causal(None), sm_scale(None), warp_specialize(None)
         return dq, dk, dv, None, None, None, None
