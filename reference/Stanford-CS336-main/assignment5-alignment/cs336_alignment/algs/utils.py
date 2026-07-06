@@ -36,12 +36,15 @@ def tokenize_prompt_and_output(
     input_ids = []
     response_mask = []
 
+    # 将每组 prompt 和 output 拼成一个序列；掩码中只有 output 部分为 True，
+    # 以便后续只对模型回答部分计算损失或统计量。
     for p_ids, o_ids in zip(prompt_tokens["input_ids"], output_tokens["input_ids"]):
         combined_ids = p_ids + o_ids
         input_ids.append(combined_ids)
         mask = ([False] * len(p_ids)) + ([True] * len(o_ids))
         response_mask.append(mask)
 
+    # 同一批次的序列必须等长，因此在右侧补 pad token；掩码的 padding 部分补 False。
     MAX_LEN = max(len(ids) for ids in input_ids)
     # 151643 for Qwen/Qwen2.5-Math-1.5B
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
@@ -54,6 +57,8 @@ def tokenize_prompt_and_output(
 
     assert full.shape == response_mask.shape, "Shapes of full and response_mask must match"
 
+    # 因果语言模型用前面的 token 预测下一个 token：
+    # input_ids 去掉末尾，labels 去掉开头，response_mask 同 labels 一起右移并保持对齐。
     input_ids = full[:, :-1].contiguous()
     labels = full[:, 1:].contiguous()
     response_mask = response_mask[:, 1:].contiguous()

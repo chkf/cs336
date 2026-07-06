@@ -254,6 +254,43 @@ def grpo_microbatch_train_step(
 
 
 class GRPOTrainer:
+    """编排完整 GRPO（Group Relative Policy Optimization）训练流程。
+
+    这个类连接了“生成 rollout 的推理流程”和“根据 rollout 更新参数的训练流程”。
+    ``model`` 是需要反向传播和更新的 HuggingFace 模型；``vllm`` 是用于快速采样
+    回答的推理实例。每次外层 GRPO step 结束后，训练模型的最新参数会同步到 vLLM，
+    从而使下一批 rollout 来自更新后的策略。
+
+    抽象训练逻辑如下：
+
+    1. 从训练集采样若干 prompt，并为每个 prompt 重复 ``group_size`` 次。
+    2. 使用当前策略的 vLLM 副本，为每个重复 prompt 生成一条固定的 rollout。
+    3. 将 prompt 与 rollout 拼接并 tokenize，同时构造只标记回答 token 的 mask。
+    4. 用奖励函数评价每条 rollout，再在同一 prompt 的回答组内计算相对 advantage。
+    5. 在更新参数前计算 rollout token 的旧策略 log-probability，供裁剪目标使用。
+    6. 将 rollout batch 切成 microbatch；训练模型重新计算带梯度的 log-probability，
+       据此构造逐 token 策略梯度损失，并只在回答 token 上聚合损失和累积梯度。
+    7. 完成一个训练 batch 的梯度累积后裁剪梯度、执行优化器更新并清空梯度。
+    8. 将新策略同步到 vLLM，按配置进行采样展示、测试集评估和日志记录。
+
+    这里的 rollout 是更新前策略已经采样出的固定文本，并不携带计算图；训练时必须
+    由 ``model`` 对这些 token 重新打分，才能把奖励信号转换为模型参数梯度。该类主要
+    负责状态和流程编排，具体的 tokenization、奖励计算、GRPO loss 等数学操作委托给
+    独立辅助函数完成。
+
+    Args:
+        model: 要训练的 HuggingFace 因果语言模型。
+        train_config: 数据、采样、优化、batch、loss 和评估等训练配置。
+        device: 放置训练张量和模型计算的 PyTorch 设备。
+        dataset_dir_base: 预处理训练集与测试集所在的根目录。
+
+    主要方法：
+        ``grpo_train_step``: 完成一次“采样一批 rollout 并据此更新策略”的外层步骤。
+        ``train``: 重复执行外层步骤，同步 vLLM，并按间隔评估和记录指标。
+        ``evaluate``: 在测试集上生成回答并汇总准确率、格式和奖励指标。
+        ``sample_responses``: 抽样展示模型回答及其奖励、长度和熵等诊断信息。
+    """
+
     def __init__(
         self,
         model: PreTrainedModel,
