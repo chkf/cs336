@@ -81,8 +81,12 @@ def main(config_path):
             server.sync_policy_weights(policy)
             completions = server.generate_completions(prompts, sampling_params)
             responses = [x.text for x in completions]
-            repeated_prompts = [prompt for prompt in prompts for _ in range(group_size)]
-            repeated_ground_truths = [answer for answer in ground_truths for _ in range(group_size)]
+            repeated_prompts = []
+            for prompt in prompts:
+                repeated_prompts.extend([prompt] * group_size)
+            repeated_ground_truths = []
+            for answer in ground_truths:
+                repeated_ground_truths.extend([answer] * group_size)
 
             _, metrics = grpo_train_step(
                 model=policy,
