@@ -1,11 +1,10 @@
 import argparse
 import json
 import random
-import tomllib
 from pathlib import Path
 
 import torch
-import wandb
+import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from cs336_alignment.algs.grpo import compute_rollout_rewards, grpo_train_step
@@ -23,8 +22,8 @@ def get_ground_truth(example):
 
 
 def main(config_path):
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
 
     train_config = config["training"]
     seed = train_config["seed"]
@@ -53,8 +52,6 @@ def main(config_path):
         betas=(0.9, 0.95),
         weight_decay=0.0,
     )
-    run = wandb.init(project=config["logging"]["wandb_project"], config=config)
-
     server = VLLMServer(
         model_id=model_id,
         gpu=config["model"]["vllm_gpu"],
@@ -98,7 +95,7 @@ def main(config_path):
                 repeated_ground_truths=repeated_ground_truths,
                 group_size=group_size,
             )
-            run.log({f"train/{key}": value for key, value in metrics.items()}, step=step)
+            print(f"step {step + 1} train: {metrics}")
 
             if (step + 1) % train_config["eval_interval"] == 0:
                 server.sync_policy_weights(policy)
@@ -113,18 +110,17 @@ def main(config_path):
                 val_metrics["mean_response_length"] = sum(
                     len(x.token_ids) for x in val_completions
                 ) / len(val_completions)
-                run.log({f"val/{key}": value for key, value in val_metrics.items()}, step=step)
+                print(f"step {step + 1} val: {val_metrics}")
 
         output_dir = config["logging"]["output_dir"]
         policy.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
     finally:
         server.stop()
-        run.finish()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/grpo.toml")
+    parser.add_argument("--config", default="configs/grpo.yaml")
     args = parser.parse_args()
     main(args.config)
