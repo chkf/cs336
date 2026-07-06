@@ -56,6 +56,7 @@ def main(config_path):
         model_id=model_id,
         gpu=config["model"]["vllm_gpu"],
         seed=seed,
+        gpu_memory_utilization=0.65,
     )
     server.start()
     server.init_weight_sync(device)
